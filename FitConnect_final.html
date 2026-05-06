@@ -1191,24 +1191,72 @@ function goalLabel(g){
   return{musculo:'Músculo',cardio:'Cardio',flexibilidad:'Flexibilidad',fuerza:'Fuerza',funcional:'Funcional'}[g]||g;
 }
 
+// ── CONFIG BACKEND ────────────────────────────────────────────────────────
+const API_URL = 'https://fitconnect-production-07a3.up.railway.app';
+
 // ── AUTH ──────────────────────────────────────────────────────────────────
 function toggleAuth(s){
   document.getElementById('login-form').style.display=s?'none':'block';
   document.getElementById('register-form').style.display=s?'block':'none';
 }
-function login(){
+function setAuthLoading(btn, loading){
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Cargando...' : btn.dataset.label;
+}
+async function login(){
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
   if(!email||!pass){toast('Completa todos los campos');return;}
-  doLogin({name:email.split('@')[0],email,role:'cliente'});
+  const btn=document.querySelector('#login-form .btn-primary');
+  if(!btn.dataset.label) btn.dataset.label=btn.textContent;
+  setAuthLoading(btn,true);
+  try{
+    const res=await fetch(`${API_URL}/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass})
+    });
+    const data=await res.json();
+    if(res.ok){
+      doLogin({name:data.name||data.nombre||email.split('@')[0],email,role:data.role||data.rol||'cliente'});
+    } else {
+      toast(data.error||data.message||'Credenciales incorrectas');
+    }
+  } catch(e){
+    toast('Error de conexión con el servidor');
+    console.error(e);
+  } finally{
+    setAuthLoading(btn,false);
+  }
 }
-function register(){
+async function register(){
   const name=document.getElementById('reg-name').value.trim();
   const email=document.getElementById('reg-email').value.trim();
   const pass=document.getElementById('reg-pass').value;
   const role=document.getElementById('reg-role').value;
   if(!name||!email||!pass){toast('Completa todos los campos');return;}
-  doLogin({name,email,role});
+  const btn=document.querySelector('#register-form .btn-primary');
+  if(!btn.dataset.label) btn.dataset.label=btn.textContent;
+  setAuthLoading(btn,true);
+  try{
+    const res=await fetch(`${API_URL}/register`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({nombre:name,email,password:pass,role})
+    });
+    const data=await res.json();
+    if(res.ok){
+      toast('Cuenta creada exitosamente');
+      doLogin({name,email,role});
+    } else {
+      toast(data.error||data.message||'Error al registrar');
+    }
+  } catch(e){
+    toast('Error de conexión con el servidor');
+    console.error(e);
+  } finally{
+    setAuthLoading(btn,false);
+  }
 }
 function loginAs(role){
   const d={admin:{name:'Admin Sistema',email:'admin@fitconnect.com',role:'admin'},
