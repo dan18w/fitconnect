@@ -796,7 +796,7 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
       </div>
       <button class="btn btn-primary btn-block" onclick="login()">Iniciar sesión</button>
       <div class="auth-switch">¿No tienes cuenta? <a onclick="toggleAuth(true)">Regístrate</a></div>
-      <div class="demo-btn">Acceso rápido: <a onclick="loginAs('admin')">Admin</a> · <a onclick="loginAs('cliente')">Cliente</a> · <a onclick="loginAs('gimnasio')">Gimnasio</a></div>
+
     </div>
     <div id="register-form" style="display:none">
       <div class="form-group">
@@ -1218,7 +1218,7 @@ async function login(){
     });
     const data=await res.json();
     if(res.ok){
-      doLogin({name:data.name||data.nombre||email.split('@')[0],email,role:data.role||data.rol||'cliente'});
+      doLogin({name:data.nombre||data.name||email.split('@')[0],email,role:data.rol||data.role||'cliente'});
     } else {
       toast(data.error||data.message||'Credenciales incorrectas');
     }
@@ -1242,7 +1242,7 @@ async function register(){
     const res=await fetch(`${API_URL}/register`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nombre:name,email,password:pass,role})
+      body:JSON.stringify({nombre:name,email,password:pass,rol:role})
     });
     const data=await res.json();
     if(res.ok){
@@ -1257,12 +1257,6 @@ async function register(){
   } finally{
     setAuthLoading(btn,false);
   }
-}
-function loginAs(role){
-  const d={admin:{name:'Admin Sistema',email:'admin@fitconnect.com',role:'admin'},
-            cliente:{name:'Juan Pérez',email:'juan@gmail.com',role:'cliente'},
-            gimnasio:{name:'FitZone Pro',email:'fitzone@gym.com',role:'gimnasio'}};
-  doLogin(d[role]);
 }
 function doLogin(user){
   currentUser=user;
@@ -1280,6 +1274,7 @@ function doLogin(user){
     }, 900);
   }
 
+  window.scrollTo({top:0,behavior:'instant'});
   document.getElementById('auth-page').style.display='none';
   document.getElementById('main-nav').style.display='flex';
   document.getElementById('nav-avatar').textContent=user.name[0].toUpperCase();
@@ -1304,6 +1299,7 @@ function doLogin(user){
 function logout(){
   currentUser=null;
   isLoggedIn=false;
+   location.reload();
 
   // Restore petals canvas to front for login screen
   const front = document.getElementById('canvas-front');
@@ -1315,6 +1311,7 @@ function logout(){
     }, 100);
   }
 
+  window.scrollTo({top:0,behavior:'instant'});
   document.getElementById('gym-tab').style.display='none';
   document.getElementById('admin-tab').style.display='none';
   document.getElementById('main-nav').style.display='none';
@@ -2030,7 +2027,7 @@ function syncMobileNav(id){
 // ── IMG LOADED CLASS ──────────────────────────────────────────────────────
 document.addEventListener('click',()=>{});
 function markImagesLoaded(){
-  document.querySelectorAll('img[]').forEach(img=>{
+  document.querySelectorAll('img[loading]').forEach(img=>{
     img.removeAttribute('loading');
   });
 }
