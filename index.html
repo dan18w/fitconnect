@@ -1405,21 +1405,58 @@ function renderPerfil(){
   document.getElementById('profile-role').textContent =
     {cliente:'Cliente',gimnasio:'Gimnasio',admin:'Administrador'}[currentUser.role] || currentUser.role;
 
-  // Gimnasios solicitados — muestra los del array GYM_REQUESTS filtrados por nombre
-  const myReqs = GYM_REQUESTS.filter(r => r.cliente === currentUser.name);
+  // Gimnasios solicitados — lee desde localStorage
+  const key = 'fc_requests_' + currentUser.email;
+  const myReqs = JSON.parse(localStorage.getItem(key) || '[]');
   const gymsEl = document.getElementById('profile-gyms');
   if(myReqs.length === 0){
     gymsEl.innerHTML = '<div class="profile-empty">Aún no has solicitado ninguna membresía.</div>';
   } else {
-    gymsEl.innerHTML = myReqs.map(r=>`
+    gymsEl.innerHTML = myReqs.map((r,i)=>`
       <div class="profile-item">
         <div class="profile-item-icon">🏢</div>
-        <div>
+        <div style="flex:1">
           <div class="profile-item-name">${r.gymName}</div>
           <div class="profile-item-sub">${r.plan} · ${r.date} · <span style="color:${r.status==='Aprobado'?'var(--green)':r.status==='Rechazado'?'var(--red)':'var(--orange)'}">${r.status}</span></div>
         </div>
+        <button class="btn btn-sm btn-danger" onclick="removeRequest(${i})">✕</button>
       </div>`).join('');
   }
+
+  // Rutinas guardadas — lee desde localStorage
+  const rkey = 'fc_routines_' + currentUser.email;
+  const myRoutines = JSON.parse(localStorage.getItem(rkey) || '[]');
+  const routinesEl = document.getElementById('profile-routines');
+  if(myRoutines.length === 0){
+    routinesEl.innerHTML = '<div class="profile-empty">Aún no has guardado ninguna rutina.</div>';
+  } else {
+    routinesEl.innerHTML = myRoutines.map((r,i)=>`
+      <div class="profile-item">
+        <div class="profile-item-icon">💪</div>
+        <div style="flex:1">
+          <div class="profile-item-name">${r.name}</div>
+          <div class="profile-item-sub">${r.level} · ${r.days} días/semana · ${r.city}</div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="removeRoutine(${i})">✕</button>
+      </div>`).join('');
+  }
+}
+
+function removeRequest(i){
+  const key = 'fc_requests_' + currentUser.email;
+  const reqs = JSON.parse(localStorage.getItem(key) || '[]');
+  reqs.splice(i,1);
+  localStorage.setItem(key, JSON.stringify(reqs));
+  renderPerfil();
+}
+
+function removeRoutine(i){
+  const key = 'fc_routines_' + currentUser.email;
+  const ruts = JSON.parse(localStorage.getItem(key) || '[]');
+  ruts.splice(i,1);
+  localStorage.setItem(key, JSON.stringify(ruts));
+  renderPerfil();
+}
 
   // Rutinas — muestra las primeras 3 como ejemplo (puedes filtrar por ciudad del usuario si aplica)
   const routinesEl = document.getElementById('profile-routines');
@@ -1501,15 +1538,35 @@ function openGymModal(id){
     </div>`;
   document.getElementById('modal').classList.add('open');
 }
-function sendRequest(gymId,plan){
-  const gym=GYMS.find(g=>g.id===gymId);
-  const userName=currentUser?currentUser.name:'Visitante';
-  GYM_REQUESTS.push({id:GYM_REQUESTS.length+1,gymId,gymName:gym.name,cliente:userName,
-    plan:plan.split('$')[0].trim(),date:new Date().toISOString().split('T')[0],status:'Pendiente'});
+function sendRequest(gymId, planName){
+  if(!currentUser){ toast('Inicia sesión primero'); return; }
+  const gym = GYMS.find(g => g.id === gymId);
+  const nueva = {
+    gymName: gym?.name || 'Gimnasio',
+    plan: planName,
+    date: new Date().toISOString().split('T')[0],
+    status: 'Pendiente'
+  };
+  // Guarda en GYM_REQUESTS (para el panel de admin/gimnasio)
+  GYM_REQUESTS.push({id: Date.now(), gymId, gymName: gym?.name, cliente: currentUser.name, plan: planName, date: nueva.date, status:'Pendiente'});
+  // Guarda en localStorage (para el perfil del usuario)
+  const key = 'fc_requests_' + currentUser.email;
+  const reqs = JSON.parse(localStorage.getItem(key) || '[]');
+  reqs.push(nueva);
+  localStorage.setItem(key, JSON.stringify(reqs));
+  toast('Solicitud enviada correctamente');
   closeModal();
-  toast(`Solicitud enviada a ${gym.name}`);
 }
-
+function saveRoutine(id){
+  const r = ROUTINES.find(x => x.id === id);
+  if(!currentUser || !r) return;
+  const key = 'fc_routines_' + currentUser.email;
+  const ruts = JSON.parse(localStorage.getItem(key) || '[]');
+  if(ruts.find(x => x.id === id)){ toast('Ya tienes esta rutina guardada'); return; }
+  ruts.push({id: r.id, name: r.name, level: r.level, days: r.days, city: r.city});
+  localStorage.setItem(key, JSON.stringify(ruts));
+  toast('Rutina guardada en tu perfil');
+}
 // ── ROUTINES ──────────────────────────────────────────────────────────────
 function renderRoutines(){
   const levels=['','Principiante','Intermedio','Avanzado'];
@@ -1582,7 +1639,7 @@ function openRoutineModal(id){
             </div>`).join('')}
         </div>
       </div>
-      <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="toast('Rutina seleccionada');closeModal()">
+      <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="saveRoutine(${r.id});closeModal()">
         Seleccionar esta rutina
       </button>
     </div>`;
