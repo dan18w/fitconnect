@@ -726,41 +726,6 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
   .auth-tagline{font-size:.76rem}
   .btn{font-size:.82rem}
 }
-/* PERFIL */
-.profile-avatar-big{
-  width:80px;height:80px;border-radius:50%;
-  background:linear-gradient(135deg,var(--accent),var(--teal));
-  display:flex;align-items:center;justify-content:center;
-  font-size:2.2rem;font-weight:800;color:#fff;margin:0 auto 14px;
-  box-shadow:0 6px 24px rgba(26,127,212,0.28)
-}
-.profile-info-card{
-  background:var(--surface);border:1.5px solid var(--border2);
-  border-radius:var(--radius);padding:28px;margin-bottom:24px;
-  text-align:center;box-shadow:var(--shadow)
-}
-.profile-info-card h2{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:4px}
-.profile-info-card p{color:var(--muted);font-size:.9rem;font-weight:500}
-.profile-badge{
-  display:inline-block;margin-top:10px;padding:4px 14px;border-radius:20px;
-  font-size:.75rem;font-weight:700;letter-spacing:.3px;
-  background:rgba(26,127,212,0.10);color:var(--accent-dark)
-}
-.profile-section-title{
-  font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;
-  margin-bottom:14px;color:var(--text)
-}
-.profile-item{
-  display:flex;align-items:center;gap:14px;
-  background:var(--surface);border:1.5px solid var(--border2);
-  border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;
-  box-shadow:var(--shadow)
-}
-.profile-item-icon{font-size:1.4rem;flex-shrink:0}
-.profile-item-name{font-weight:700;font-size:.92rem}
-.profile-item-sub{color:var(--muted);font-size:.8rem;font-weight:500}
-.profile-empty{color:var(--muted);font-size:.88rem;text-align:center;padding:28px 0}
-
 </style>
 </head>
 <body>
@@ -785,7 +750,7 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
   </div>
   <div class="nav-right">
     <div class="avatar" id="nav-avatar">U</div>
-<span class="nav-name" id="nav-name" onclick="showPage('perfil')" style="cursor:pointer" title="Ver perfil">Usuario</span>
+    <span class="nav-name" id="nav-name">Usuario</span>
     <button class="btn btn-sm btn-outline" onclick="logout()">Salir</button>
     <button class="mobile-menu-btn" id="mob-menu-btn" onclick="toggleMobileMenu()" aria-label="Menú">
       <span></span><span></span><span></span>
@@ -804,7 +769,6 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
   <div class="mob-user-row">
     <div class="avatar" id="mob-avatar">U</div>
     <span class="mob-user-name" id="mob-name">Usuario</span>
-    <button class="mob-tab" onclick="showPage('perfil');closeMobileMenu()" style="border-top:none;padding:8px 14px"><span class="mob-tab-icon">👤</span>Mi perfil</button>
     <button class="mob-logout-btn" onclick="logout();closeMobileMenu()">Salir</button>
   </div>
 </div>
@@ -905,22 +869,6 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
   <h1 class="page-title">Planes y Membresías</h1>
   <p class="page-sub">Encuentra el plan perfecto para tu presupuesto y estilo de vida</p>
   <div class="plans-grid" id="plans-grid"></div>
-</div>
-
-<!-- PERFIL PAGE -->
-<div class="page" id="page-perfil">
-  <h1 class="page-title">Mi Perfil</h1>
-  <p class="page-sub">Tu información y actividad en FitConnect</p>
-  <div class="profile-info-card">
-    <div class="profile-avatar-big" id="profile-avatar-big">U</div>
-    <h2 id="profile-name">—</h2>
-    <p id="profile-email">—</p>
-    <span class="profile-badge" id="profile-role">cliente</span>
-  </div>
-  <div class="profile-section-title">🏋️ Gimnasios solicitados</div>
-  <div id="profile-gyms"></div>
-  <div class="profile-section-title" style="margin-top:20px">📋 Rutinas guardadas</div>
-  <div id="profile-routines"></div>
 </div>
 
 <!-- ADMIN PAGE -->
@@ -1391,85 +1339,11 @@ function showPage(id){
   if(id==='planes') renderPlans();
   if(id==='admin') renderAdmin();
   if(id==='gimnasio') renderGymPanel();
-  if(id==='perfil') renderPerfil();
   syncMobileNav(id);
   setTimeout(markImagesLoaded,100);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function renderPerfil(){
-  if(!currentUser) return;
-  document.getElementById('profile-avatar-big').textContent = currentUser.name[0].toUpperCase();
-  document.getElementById('profile-name').textContent = currentUser.name;
-  document.getElementById('profile-email').textContent = currentUser.email;
-  document.getElementById('profile-role').textContent =
-    {cliente:'Cliente',gimnasio:'Gimnasio',admin:'Administrador'}[currentUser.role] || currentUser.role;
-
-  // Gimnasios solicitados — lee desde localStorage
-  const key = 'fc_requests_' + currentUser.email;
-  const myReqs = JSON.parse(localStorage.getItem(key) || '[]');
-  const gymsEl = document.getElementById('profile-gyms');
-  if(myReqs.length === 0){
-    gymsEl.innerHTML = '<div class="profile-empty">Aún no has solicitado ninguna membresía.</div>';
-  } else {
-    gymsEl.innerHTML = myReqs.map((r,i)=>`
-      <div class="profile-item">
-        <div class="profile-item-icon">🏢</div>
-        <div style="flex:1">
-          <div class="profile-item-name">${r.gymName}</div>
-          <div class="profile-item-sub">${r.plan} · ${r.date} · <span style="color:${r.status==='Aprobado'?'var(--green)':r.status==='Rechazado'?'var(--red)':'var(--orange)'}">${r.status}</span></div>
-        </div>
-        <button class="btn btn-sm btn-danger" onclick="removeRequest(${i})">✕</button>
-      </div>`).join('');
-  }
-
-  // Rutinas guardadas — lee desde localStorage
-  const rkey = 'fc_routines_' + currentUser.email;
-  const myRoutines = JSON.parse(localStorage.getItem(rkey) || '[]');
-  const routinesEl = document.getElementById('profile-routines');
-  if(myRoutines.length === 0){
-    routinesEl.innerHTML = '<div class="profile-empty">Aún no has guardado ninguna rutina.</div>';
-  } else {
-    routinesEl.innerHTML = myRoutines.map((r,i)=>`
-      <div class="profile-item">
-        <div class="profile-item-icon">💪</div>
-        <div style="flex:1">
-          <div class="profile-item-name">${r.name}</div>
-          <div class="profile-item-sub">${r.level} · ${r.days} días/semana · ${r.city}</div>
-        </div>
-        <button class="btn btn-sm btn-danger" onclick="removeRoutine(${i})">✕</button>
-      </div>`).join('');
-  }
-}
-
-function removeRequest(i){
-  const key = 'fc_requests_' + currentUser.email;
-  const reqs = JSON.parse(localStorage.getItem(key) || '[]');
-  reqs.splice(i,1);
-  localStorage.setItem(key, JSON.stringify(reqs));
-  renderPerfil();
-}
-
-function removeRoutine(i){
-  const key = 'fc_routines_' + currentUser.email;
-  const ruts = JSON.parse(localStorage.getItem(key) || '[]');
-  ruts.splice(i,1);
-  localStorage.setItem(key, JSON.stringify(ruts));
-  renderPerfil();
-}
-
-  // Rutinas — muestra las primeras 3 como ejemplo (puedes filtrar por ciudad del usuario si aplica)
-  const routinesEl = document.getElementById('profile-routines');
-  const sample = ROUTINES.slice(0,3);
-  routinesEl.innerHTML = sample.map(r=>`
-    <div class="profile-item">
-      <div class="profile-item-icon">💪</div>
-      <div>
-        <div class="profile-item-name">${r.name}</div>
-        <div class="profile-item-sub">${r.level} · ${r.days} días/semana · ${r.city}</div>
-      </div>
-    </div>`).join('');
-}
 // ── GYMS ──────────────────────────────────────────────────────────────────
 function renderGyms(){
   const q=(document.getElementById('search-query').value||'').toLowerCase();
