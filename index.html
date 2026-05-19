@@ -1538,35 +1538,15 @@ function openGymModal(id){
     </div>`;
   document.getElementById('modal').classList.add('open');
 }
-function sendRequest(gymId, planName){
-  if(!currentUser){ toast('Inicia sesión primero'); return; }
-  const gym = GYMS.find(g => g.id === gymId);
-  const nueva = {
-    gymName: gym?.name || 'Gimnasio',
-    plan: planName,
-    date: new Date().toISOString().split('T')[0],
-    status: 'Pendiente'
-  };
-  // Guarda en GYM_REQUESTS (para el panel de admin/gimnasio)
-  GYM_REQUESTS.push({id: Date.now(), gymId, gymName: gym?.name, cliente: currentUser.name, plan: planName, date: nueva.date, status:'Pendiente'});
-  // Guarda en localStorage (para el perfil del usuario)
-  const key = 'fc_requests_' + currentUser.email;
-  const reqs = JSON.parse(localStorage.getItem(key) || '[]');
-  reqs.push(nueva);
-  localStorage.setItem(key, JSON.stringify(reqs));
-  toast('Solicitud enviada correctamente');
+function sendRequest(gymId,plan){
+  const gym=GYMS.find(g=>g.id===gymId);
+  const userName=currentUser?currentUser.name:'Visitante';
+  GYM_REQUESTS.push({id:GYM_REQUESTS.length+1,gymId,gymName:gym.name,cliente:userName,
+    plan:plan.split('$')[0].trim(),date:new Date().toISOString().split('T')[0],status:'Pendiente'});
   closeModal();
+  toast(`Solicitud enviada a ${gym.name}`);
 }
-function saveRoutine(id){
-  const r = ROUTINES.find(x => x.id === id);
-  if(!currentUser || !r) return;
-  const key = 'fc_routines_' + currentUser.email;
-  const ruts = JSON.parse(localStorage.getItem(key) || '[]');
-  if(ruts.find(x => x.id === id)){ toast('Ya tienes esta rutina guardada'); return; }
-  ruts.push({id: r.id, name: r.name, level: r.level, days: r.days, city: r.city});
-  localStorage.setItem(key, JSON.stringify(ruts));
-  toast('Rutina guardada en tu perfil');
-}
+
 // ── ROUTINES ──────────────────────────────────────────────────────────────
 function renderRoutines(){
   const levels=['','Principiante','Intermedio','Avanzado'];
@@ -1639,7 +1619,7 @@ function openRoutineModal(id){
             </div>`).join('')}
         </div>
       </div>
-      <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="saveRoutine(${r.id});closeModal()">
+      <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="toast('Rutina seleccionada');closeModal()">
         Seleccionar esta rutina
       </button>
     </div>`;
