@@ -1218,11 +1218,11 @@ const PLANS = [
 ];
 
 let GYM_REQUESTS = [
-  {id:1,gymId:1,gymName:"FitZone Pro",    cliente:"María González",  plan:"Premium FitZone",   date:"2025-05-01",status:"Pendiente"},
-  {id:2,gymId:1,gymName:"FitZone Pro",    cliente:"Carlos Ruiz",     plan:"VIP FitZone",       date:"2025-04-30",status:"Pendiente"},
-  {id:3,gymId:1,gymName:"FitZone Pro",    cliente:"Lina Martínez",   plan:"Básico FitZone",    date:"2025-04-28",status:"Aprobado"},
-  {id:4,gymId:2,gymName:"CardioCity",     cliente:"Pedro Álvarez",   plan:"Trimestral",        date:"2025-05-01",status:"Pendiente"},
-  {id:5,gymId:3,gymName:"CrossPower",     cliente:"Sofía Torres",    plan:"CrossPower Elite",  date:"2025-04-29",status:"Pendiente"},
+  {id:1,gymId:1,gymName:"FitZone Pro",    cliente:"María González",  clienteEmail:"maria@gmail.com",  plan:"Premium FitZone",   date:"2025-05-01",status:"Pendiente"},
+  {id:2,gymId:1,gymName:"FitZone Pro",    cliente:"Carlos Ruiz",     clienteEmail:"carlos@gmail.com", plan:"VIP FitZone",       date:"2025-04-30",status:"Pendiente"},
+  {id:3,gymId:1,gymName:"FitZone Pro",    cliente:"Lina Martínez",   clienteEmail:"lina@gmail.com",   plan:"Básico FitZone",    date:"2025-04-28",status:"Aprobado"},
+  {id:4,gymId:2,gymName:"CardioCity",     cliente:"Pedro Álvarez",   clienteEmail:"pedro@gmail.com",  plan:"Trimestral",        date:"2025-05-01",status:"Pendiente"},
+  {id:5,gymId:3,gymName:"CrossPower",     cliente:"Sofía Torres",    clienteEmail:"sofia@gmail.com",  plan:"CrossPower Elite",  date:"2025-04-29",status:"Pendiente"},
 ];
 
 let USERS = [
@@ -1235,8 +1235,50 @@ let USERS = [
 ];
 
 let currentUser = null;
+let savedRoutinesByUser = {};
 let levelFilter = "";
 let adminSection = "usuarios";
+
+const STORAGE_KEY = 'fitconnect.state';
+
+function getSavedRoutines(){
+  if(!currentUser?.email) return [];
+  return Array.isArray(savedRoutinesByUser[currentUser.email]) ? savedRoutinesByUser[currentUser.email] : [];
+}
+
+function setSavedRoutines(list){
+  if(!currentUser?.email) return;
+  savedRoutinesByUser[currentUser.email] = list;
+}
+
+function isRoutineSaved(id){
+  return getSavedRoutines().includes(id);
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const state = JSON.parse(raw);
+    if(state?.currentUser) currentUser = state.currentUser;
+    if(Array.isArray(state?.gymRequests)) GYM_REQUESTS = state.gymRequests;
+    if(state?.savedRoutinesByUser && typeof state.savedRoutinesByUser === 'object') {
+      savedRoutinesByUser = state.savedRoutinesByUser;
+    } else if(Array.isArray(state?.savedRoutines) && state?.currentUser?.email) {
+      savedRoutinesByUser[state.currentUser.email] = state.savedRoutines;
+    }
+  }catch(e){console.warn('No se pudo cargar el estado',e);}
+}
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      currentUser,
+      gymRequests: GYM_REQUESTS,
+      savedRoutinesByUser
+    }));
+  }catch(e){console.warn('No se pudo guardar el estado',e);}
+}
 
 // ── GOAL LABEL ────────────────────────────────────────────────────────────
 function goalLabel(g){
@@ -1313,6 +1355,7 @@ async function register(){
 function doLogin(user){
   currentUser=user;
   isLoggedIn=true;
+  saveState();
 
   // Smoothly push petals canvas behind the app UI
   const front = document.getElementById('canvas-front');
@@ -1321,7 +1364,6 @@ function doLogin(user){
     setTimeout(()=>{
       front.classList.add('behind');
       front.style.opacity='1';
-      // Add more petals for the app experience
       if(window._addPetalsAfterLogin) window._addPetalsAfterLogin();
     }, 900);
   }
@@ -1351,9 +1393,8 @@ function doLogin(user){
 function logout(){
   currentUser=null;
   isLoggedIn=false;
-   location.reload();
+  saveState();
 
-  // Restore petals canvas to front for login screen
   const front = document.getElementById('canvas-front');
   if(front){
     front.style.opacity='0';
@@ -1399,15 +1440,18 @@ function showPage(id){
 
 // ── PERFIL ────────────────────────────────────────────────────────────────
 function renderPerfil(){
-  if(!currentUser) return;
+  if(!currentUser){
+    toast('Inicia sesión para ver tu perfil');
+    showPage('buscar');
+    return;
+  }
   document.getElementById('profile-avatar-big').textContent = currentUser.name[0].toUpperCase();
   document.getElementById('profile-name').textContent = currentUser.name;
   document.getElementById('profile-email').textContent = currentUser.email;
   document.getElementById('profile-role').textContent =
     {cliente:'Cliente',gimnasio:'Gimnasio',admin:'Administrador'}[currentUser.role] || currentUser.role;
 
-  // Gimnasios solicitados — muestra los del array GYM_REQUESTS filtrados por nombre
-  const myReqs = GYM_REQUESTS.filter(r => r.cliente === currentUser.name);
+  const myReqs = GYM_REQUESTS.filter(r => r.clienteEmail === currentUser.email);
   const gymsEl = document.getElementById('profile-gyms');
   if(myReqs.length === 0){
     gymsEl.innerHTML = '<div class="profile-empty">Aún no has solicitado ninguna membresía.</div>';
@@ -1422,17 +1466,21 @@ function renderPerfil(){
       </div>`).join('');
   }
 
-  // Rutinas — muestra las primeras 3 como ejemplo (puedes filtrar por ciudad del usuario si aplica)
   const routinesEl = document.getElementById('profile-routines');
-  const sample = ROUTINES.slice(0,3);
-  routinesEl.innerHTML = sample.map(r=>`
-    <div class="profile-item">
-      <div class="profile-item-icon">💪</div>
-      <div>
-        <div class="profile-item-name">${r.name}</div>
-        <div class="profile-item-sub">${r.level} · ${r.days} días/semana · ${r.city}</div>
-      </div>
-    </div>`).join('');
+  const userSaved = getSavedRoutines();
+  if(!userSaved.length){
+    routinesEl.innerHTML = '<div class="profile-empty">No tienes rutinas guardadas aún. Guarda una desde la página de rutinas.</div>';
+  } else {
+    const saved = ROUTINES.filter(r => userSaved.includes(r.id));
+    routinesEl.innerHTML = saved.map(r=>`
+      <div class="profile-item">
+        <div class="profile-item-icon">💪</div>
+        <div>
+          <div class="profile-item-name">${r.name}</div>
+          <div class="profile-item-sub">${r.level} · ${r.days} días/semana · ${r.city}</div>
+        </div>
+      </div>`).join('');
+  }
 }
 
 // ── GYMS ──────────────────────────────────────────────────────────────────
@@ -1504,12 +1552,43 @@ function openGymModal(id){
   document.getElementById('modal').classList.add('open');
 }
 function sendRequest(gymId,plan){
+  if(!currentUser){
+    toast('Debes iniciar sesión para enviar solicitudes');
+    return;
+  }
   const gym=GYMS.find(g=>g.id===gymId);
-  const userName=currentUser?currentUser.name:'Visitante';
-  GYM_REQUESTS.push({id:GYM_REQUESTS.length+1,gymId,gymName:gym.name,cliente:userName,
-    plan:plan.split('$')[0].trim(),date:new Date().toISOString().split('T')[0],status:'Pendiente'});
+  GYM_REQUESTS.push({
+    id:GYM_REQUESTS.length+1,
+    gymId,
+    gymName:gym.name,
+    cliente:currentUser.name,
+    clienteEmail:currentUser.email,
+    plan:plan.split('$')[0].trim(),
+    date:new Date().toISOString().split('T')[0],
+    status:'Pendiente'
+  });
+  saveState();
   closeModal();
   toast(`Solicitud enviada a ${gym.name}`);
+}
+
+function toggleRoutineSave(routineId){
+  if(!currentUser){
+    toast('Inicia sesión para guardar rutinas');
+    return;
+  }
+  const userSaved = getSavedRoutines();
+  const idx = userSaved.indexOf(routineId);
+  if(idx === -1){
+    userSaved.push(routineId);
+    toast('Rutina guardada');
+  } else {
+    userSaved.splice(idx,1);
+    toast('Rutina eliminada de guardadas');
+  }
+  setSavedRoutines(userSaved);
+  saveState();
+  renderRoutines();
 }
 
 // ── ROUTINES ──────────────────────────────────────────────────────────────
@@ -1586,6 +1665,9 @@ function openRoutineModal(id){
       </div>
       <button class="btn btn-primary btn-block" style="margin-top:6px" onclick="toast('Rutina seleccionada');closeModal()">
         Seleccionar esta rutina
+      </button>
+      <button class="btn btn-outline btn-block" style="margin-top:10px" onclick="toggleRoutineSave(${r.id})">
+        ${isRoutineSaved(r.id)?'Quitar de guardadas':'Guardar rutina'}
       </button>
     </div>`;
   document.getElementById('modal').classList.add('open');
@@ -2124,6 +2206,12 @@ function markImagesLoaded(){
 }
 
 // Init
+loadState();
+if(currentUser){
+  doLogin(currentUser);
+} else {
+  showPage('buscar');
+}
 renderGyms();
 renderFooterGyms();
 markImagesLoaded();
