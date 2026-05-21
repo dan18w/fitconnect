@@ -1394,24 +1394,7 @@ function logout(){
   currentUser=null;
   isLoggedIn=false;
   saveState();
-
-  const front = document.getElementById('canvas-front');
-  if(front){
-    front.style.opacity='0';
-    setTimeout(()=>{
-      front.classList.remove('behind');
-      front.style.opacity='1';
-    }, 100);
-  }
-
-  window.scrollTo({top:0,behavior:'instant'});
-  document.getElementById('gym-tab').style.display='none';
-  document.getElementById('admin-tab').style.display='none';
-  document.getElementById('main-nav').style.display='none';
-  document.getElementById('auth-page').style.display='flex';
-  document.getElementById('login-email').value='';
-  document.getElementById('login-pass').value='';
-  toggleAuth(false);
+  window.location.reload();
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────
