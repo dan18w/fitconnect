@@ -162,6 +162,12 @@ INSERT INTO planes (gimnasio_id, nombre, precio, duracion_meses, destacado, desc
 (9, 'SpeedTrack Semestral', 480000,  6, 0, 'Pista de atletismo por 6 meses completos. Ahorra $60.000.'),
 (10,'CoreZone Plus',        110000,  1, 1, 'TRX y funcional ilimitado con evaluación postural.');
 
+-- Solicitudes de membresía de ejemplo
+INSERT INTO solicitudes (usuario_id, plan_id, gimnasio_id, estado) VALUES
+(1, 2, 1, 'Pendiente'),
+(3, 5, 2, 'Aprobado'),
+(5, 9, 4, 'Pendiente');
+
 -- Rutinas
 INSERT INTO rutinas (gimnasio_id, nombre, nivel, dias, grupos_musculares) VALUES
 (1,  'Hipertrofia Total',     'Intermedio',   5, 'Pecho, Espalda, Piernas, Hombros, Brazos'),

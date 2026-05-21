@@ -201,6 +201,80 @@ def crear_gimnasio():
 
 
 # ============================================================
+#  SOLICITUDES DE MEMBRESÍA
+# ============================================================
+@app.route("/solicitudes", methods=["GET"])
+def listar_solicitudes():
+    usuario_id = request.args.get("usuario_id")
+    gimnasio_id = request.args.get("gimnasio_id")
+    estado = request.args.get("estado")
+
+    sql = (
+        "SELECT s.id, s.estado, s.fecha, u.id AS usuario_id, u.nombre AS cliente, u.email AS cliente_email, "
+        "p.id AS plan_id, p.nombre AS plan_nombre, p.precio, g.id AS gimnasio_id, g.nombre AS gimnasio, g.ciudad "
+        "FROM solicitudes s "
+        "JOIN usuarios u ON s.usuario_id = u.id "
+        "JOIN planes p ON s.plan_id = p.id "
+        "JOIN gimnasios g ON s.gimnasio_id = g.id "
+        "WHERE 1=1"
+    )
+    params = []
+
+    if usuario_id:
+        sql += " AND s.usuario_id=%s"
+        params.append(int(usuario_id))
+    if gimnasio_id:
+        sql += " AND s.gimnasio_id=%s"
+        params.append(int(gimnasio_id))
+    if estado:
+        sql += " AND s.estado=%s"
+        params.append(estado)
+
+    sql += " ORDER BY s.fecha DESC"
+    return ok(query(sql, params))
+
+
+@app.route("/solicitudes", methods=["POST"])
+def crear_solicitud():
+    d = request.json or {}
+    usuario_id = d.get("usuario_id")
+    gimnasio_id = d.get("gimnasio_id")
+    plan_id = d.get("plan_id")
+
+    if not usuario_id or not gimnasio_id or not plan_id:
+        return err("usuario_id, gimnasio_id y plan_id son requeridos.")
+
+    if not query("SELECT id FROM usuarios WHERE id=%s", (usuario_id,), fetchone=True):
+        return err("Usuario no encontrado.", 404)
+    if not query("SELECT id FROM gimnasios WHERE id=%s", (gimnasio_id,), fetchone=True):
+        return err("Gimnasio no encontrado.", 404)
+    if not query("SELECT id FROM planes WHERE id=%s AND gimnasio_id=%s", (plan_id, gimnasio_id), fetchone=True):
+        return err("Plan no válido para este gimnasio.", 404)
+
+    sid = query(
+        "INSERT INTO solicitudes (usuario_id, plan_id, gimnasio_id) VALUES (%s,%s,%s)",
+        (usuario_id, plan_id, gimnasio_id), commit=True
+    )
+
+    return ok({"id": sid}), 201
+
+
+@app.route("/solicitudes/<int:sid>", methods=["PUT"])
+def actualizar_solicitud(sid):
+    d = request.json or {}
+    estado = d.get("estado")
+
+    if estado not in ("Pendiente", "Aprobado", "Rechazado"):
+        return err("Estado inválido.")
+
+    if not query("SELECT id FROM solicitudes WHERE id=%s", (sid,), fetchone=True):
+        return err("Solicitud no encontrada.", 404)
+
+    query("UPDATE solicitudes SET estado=%s WHERE id=%s", (estado, sid), commit=True)
+    return ok(query("SELECT * FROM solicitudes WHERE id=%s", (sid,), fetchone=True))
+
+
+# ============================================================
 #  SERVIDOR
 # ============================================================
 @app.route("/")

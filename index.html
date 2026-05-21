@@ -1312,7 +1312,12 @@ async function login(){
     });
     const data=await res.json();
     if(res.ok){
-      doLogin({name:data.nombre||data.name||email.split('@')[0],email,role:data.rol||data.role||'cliente'});
+      doLogin({
+        id:data.id,
+        name:data.nombre||data.name||email.split('@')[0],
+        email,
+        role:data.rol||data.role||'cliente'
+      });
     } else {
       toast(data.error||data.message||'Credenciales incorrectas');
     }
@@ -1341,7 +1346,7 @@ async function register(){
     const data=await res.json();
     if(res.ok){
       toast('Cuenta creada exitosamente');
-      doLogin({name,email,role});
+      doLogin({id:data.id,name,email,role});
     } else {
       toast(data.error||data.message||'Error al registrar');
     }
@@ -1539,37 +1544,61 @@ function openGymModal(id){
       <span class="badge badge-${g.goal}" style="display:inline-block;margin-bottom:16px">${goalLabel(g.goal)}</span>
       <div class="modal-section">
         <div class="modal-section-title">Planes disponibles</div>
-        ${g.plans.map(p=>`
+        ${PLANS.filter(p=>p.gymId===g.id).map(p=>`
           <div class="plan-row">
-            <span class="plan-row-name">${p.split('$')[0].trim()}</span>
+            <span class="plan-row-name">${p.name}</span>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="plan-row-price">$${p.split('$')[1]}</span>
-              <button class="btn btn-sm btn-primary" onclick="sendRequest(${g.id},'${p}')">Solicitar</button>
+              <span class="plan-row-price">$${p.price.toLocaleString()}</span>
+              <button class="btn btn-sm btn-primary" onclick="sendRequest(${g.id},${p.id})">Solicitar</button>
             </div>
           </div>`).join('')}
       </div>
     </div>`;
   document.getElementById('modal').classList.add('open');
 }
-function sendRequest(gymId,plan){
-  if(!currentUser){
+async function sendRequest(gymId,planId){
+  if(!currentUser || !currentUser.id){
     toast('Debes iniciar sesión para enviar solicitudes');
     return;
   }
   const gym=GYMS.find(g=>g.id===gymId);
-  GYM_REQUESTS.push({
-    id:GYM_REQUESTS.length+1,
-    gymId,
-    gymName:gym.name,
-    cliente:currentUser.name,
-    clienteEmail:currentUser.email,
-    plan:plan.split('$')[0].trim(),
-    date:new Date().toISOString().split('T')[0],
-    status:'Pendiente'
-  });
-  saveState();
-  closeModal();
-  toast(`Solicitud enviada a ${gym.name}`);
+  const plan=PLANS.find(p=>p.id===planId);
+  if(!gym || !plan){
+    toast('Plan o gimnasio no válido');
+    return;
+  }
+  try{
+    const res=await fetch(`${API_URL}/solicitudes`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        usuario_id:currentUser.id,
+        gimnasio_id:gymId,
+        plan_id:planId
+      })
+    });
+    const data=await res.json();
+    if(!res.ok){
+      toast(data.error||data.message||'Error al enviar la solicitud');
+      return;
+    }
+    GYM_REQUESTS.push({
+      id:data.id || GYM_REQUESTS.length+1,
+      gymId,
+      gymName:gym.name,
+      cliente:currentUser.name,
+      clienteEmail:currentUser.email,
+      plan:plan.name,
+      date:new Date(data.fecha || new Date().toISOString()).toISOString().split('T')[0],
+      status:'Pendiente'
+    });
+    saveState();
+    closeModal();
+    toast(`Solicitud enviada a ${gym.name}`);
+  } catch(e){
+    toast('Error de conexión con el servidor');
+    console.error(e);
+  }
 }
 
 function toggleRoutineSave(routineId){
@@ -1691,7 +1720,7 @@ function renderPlans(){
         <div class="plan-gym-info">${gym?.name} &nbsp;·&nbsp; ${p.city} &nbsp;·&nbsp; ${p.duration}</div>
         <div class="plan-price-big">$${p.price.toLocaleString()} <span>/mes</span></div>
         <ul class="plan-features">${p.features.map(f=>`<li>${f}</li>`).join('')}</ul>
-        <button class="btn ${p.featured?'btn-primary':'btn-teal'} btn-block" onclick="sendRequest(${gym?.id},'${p.name} $${p.price.toLocaleString()}')">
+        <button class="btn ${p.featured?'btn-primary':'btn-teal'} btn-block" onclick="sendRequest(${gym?.id},${p.id})">
           Seleccionar plan
         </button>
       </div>
@@ -1768,10 +1797,30 @@ function adminTab(tab){
     </div>`;
   }
 }
-function resolveRequest(idx,status){
-  GYM_REQUESTS[idx].status=status;
-  toast(status==='Aprobado'?'Solicitud aprobada':'Solicitud rechazada');
-  renderAdmin();
+async function resolveRequest(idx,status){
+  const request = GYM_REQUESTS[idx];
+  if(!request || !request.id){
+    toast('Solicitud no válida');
+    return;
+  }
+  try{
+    const res=await fetch(`${API_URL}/solicitudes/${request.id}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({estado:status})
+    });
+    const data=await res.json();
+    if(!res.ok){
+      toast(data.error||data.message||'Error al actualizar la solicitud');
+      return;
+    }
+    request.status = status;
+    toast(status==='Aprobado'?'Solicitud aprobada':'Solicitud rechazada');
+    renderAdmin();
+  } catch(e){
+    toast('Error de conexión con el servidor');
+    console.error(e);
+  }
 }
 function toggleUser(id){
   const u=USERS.find(x=>x.id===id);
@@ -1822,10 +1871,30 @@ function renderGymPanel(){
       <div class="stat-label">${s.label}</div>
     </div>`).join('');
 }
-function resolveGymReq(idx,status){
-  GYM_REQUESTS[idx].status=status;
-  toast(status==='Aprobado'?'Solicitud aprobada':'Solicitud rechazada');
-  renderGymPanel();
+async function resolveGymReq(idx,status){
+  const request = GYM_REQUESTS[idx];
+  if(!request || !request.id){
+    toast('Solicitud no válida');
+    return;
+  }
+  try{
+    const res=await fetch(`${API_URL}/solicitudes/${request.id}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({estado:status})
+    });
+    const data=await res.json();
+    if(!res.ok){
+      toast(data.error||data.message||'Error al actualizar la solicitud');
+      return;
+    }
+    request.status = status;
+    toast(status==='Aprobado'?'Solicitud aprobada':'Solicitud rechazada');
+    renderGymPanel();
+  } catch(e){
+    toast('Error de conexión con el servidor');
+    console.error(e);
+  }
 }
 
 // ── GYM FORM ──────────────────────────────────────────────────────────────
