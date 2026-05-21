@@ -128,18 +128,8 @@ INSERT INTO usuarios (nombre, email, password, rol) VALUES
 ('Admin FitConnect', 'admin@fitconnect.com',  '$2b$12$HASH_ADMIN',   'admin'),
 ('Juan Pérez',       'juan@gmail.com',         '$2b$12$HASH_JUAN',    'cliente'),
 ('Laura Mendoza',    'laura@gmail.com',         '$2b$12$HASH_LAURA',   'cliente'),
-
--- Gym owner accounts (one per gym)
-('FitZone Pro Owner', 'fitzone@gym.com',    '$2b$12$HASH_FITZONE', 'gimnasio'),
-('CardioCity Owner',  'cardio@gym.com',      '$2b$12$HASH_CARDIO',  'gimnasio'),
-('CrossPower Owner',  'crosspower@gym.com',  '$2b$12$HASH_CROSS',   'gimnasio'),
-('ZenFit Owner',      'zenfit@gym.com',      '$2b$12$HASH_ZEN',     'gimnasio'),
-('PowerHouse Owner',  'powerhouse@gym.com',  '$2b$12$HASH_POWER',   'gimnasio'),
-('EliteFit Owner',    'elitefit@gym.com',    '$2b$12$HASH_ELITE',   'gimnasio'),
-('PrimeFit Owner',    'primefit@gym.com',    '$2b$12$HASH_PRIME',   'gimnasio'),
-('AquaFit Owner',     'aquafit@gym.com',     '$2b$12$HASH_AQUA',    'gimnasio'),
-('SpeedTrack Owner',  'speedtrack@gym.com',  '$2b$12$HASH_SPEED',   'gimnasio'),
-('CoreZone Owner',    'corezone@gym.com',    '$2b$12$HASH_CORE',    'gimnasio');
+('FitZone Pro',      'fitzone@gym.com',         '$2b$12$HASH_FITZONE', 'gimnasio'),
+('CardioCity',       'cardio@gym.com',          '$2b$12$HASH_CARDIO',  'gimnasio');
 
 -- Gimnasios
 INSERT INTO gimnasios (nombre, ciudad, precio_base, objetivo, rating, descripcion) VALUES
@@ -171,12 +161,6 @@ INSERT INTO planes (gimnasio_id, nombre, precio, duracion_meses, destacado, desc
 (8, 'AquaFit Mensual',       75000,  1, 0, 'Piscina semiolímpica y clases de aquaeróbicos.'),
 (9, 'SpeedTrack Semestral', 480000,  6, 0, 'Pista de atletismo por 6 meses completos. Ahorra $60.000.'),
 (10,'CoreZone Plus',        110000,  1, 1, 'TRX y funcional ilimitado con evaluación postural.');
-
--- Solicitudes de membresía de ejemplo
-INSERT INTO solicitudes (usuario_id, plan_id, gimnasio_id, estado) VALUES
-(1, 2, 1, 'Pendiente'),
-(3, 5, 2, 'Aprobado'),
-(5, 9, 4, 'Pendiente');
 
 -- Rutinas
 INSERT INTO rutinas (gimnasio_id, nombre, nivel, dias, grupos_musculares) VALUES
