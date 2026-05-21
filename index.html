@@ -934,7 +934,6 @@ footer{background:linear-gradient(160deg,#0a2a50 0%,#0a4a80 60%,#0a6090 100%);co
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn btn-primary" onclick="crearPlan()">Publicar plan</button>
         <button class="btn btn-teal" onclick="crearRutina()">Publicar rutina</button>
-        <button class="btn btn-outline" onclick="actualizarInfo()">Actualizar información</button>
       </div>
       <div id="gym-actions" style="margin-top:16px"></div>
     </div>
@@ -1830,49 +1829,106 @@ function resolveGymReq(idx,status){
 
 // ── GYM FORM ──────────────────────────────────────────────────────────────
 function crearPlan(){
+  const gymOptions = GYMS.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
   document.getElementById('gym-actions').innerHTML=`
     <div style="background:var(--bg);border:1.5px solid var(--border2);border-radius:11px;padding:16px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;margin-bottom:12px">Nuevo Plan</div>
+      <div class="form-group"><label class="form-label">Gimnasio</label><select id="plan-gimnasio">${gymOptions}</select></div>
       <div class="form-group"><label class="form-label">Nombre del plan</label><input id="plan-nombre" placeholder="ej. Plan Premium"/></div>
       <div class="form-group"><label class="form-label">Precio (COP)</label><input id="plan-precio" type="number" placeholder="ej. 150000"/></div>
-      <button class="btn btn-primary" onclick="guardarPlan()">Guardar plan</button>
+      <div class="form-group"><label class="form-label">Duración (meses)</label><input id="plan-duracion" type="number" min="1" value="1"/></div>
+      <div class="form-group"><label class="form-label">Descripción</label><input id="plan-descripcion" placeholder="Descripción breve"/></div>
+      <button class="btn btn-primary" onclick="guardarPlan()">Enviar para aprobación</button>
     </div>`;
 }
-function guardarPlan(){
-  const n=document.getElementById('plan-nombre').value;
-  if(!n){toast('Escribe el nombre');return;}
-  document.getElementById('gym-actions').innerHTML=`<div style="color:var(--green);font-weight:700;padding:10px 0">Plan guardado correctamente.</div>`;
-  toast('Plan creado');
+async function guardarPlan(){
+  const gimnasio_id = parseInt(document.getElementById('plan-gimnasio').value, 10);
+  const nombre = document.getElementById('plan-nombre').value.trim();
+  const precio = parseInt(document.getElementById('plan-precio').value, 10);
+  const duracion_meses = parseInt(document.getElementById('plan-duracion').value, 10);
+  const descripcion = document.getElementById('plan-descripcion').value.trim();
+
+  if(!nombre || !precio || !duracion_meses){
+    toast('Completa nombre, precio y duración.');
+    return;
+  }
+
+  try{
+    const res = await fetch(`${API_URL}/pendientes/planes`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        role: currentUser?.role || 'gimnasio',
+        gimnasio_id,
+        nombre,
+        precio,
+        duracion_meses,
+        descripcion
+      })
+    });
+    const data = await res.json();
+    if(res.ok){
+      document.getElementById('gym-actions').innerHTML=`<div style="color:var(--green);font-weight:700;padding:10px 0">Plan enviado para aprobación.</div>`;
+      toast('Plan enviado al admin.');
+    } else {
+      toast(data.error || 'No se pudo enviar el plan.');
+    }
+  } catch(e){
+    console.error(e);
+    toast('Error de conexión al servidor.');
+  }
 }
 function crearRutina(){
+  const gymOptions = GYMS.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
   document.getElementById('gym-actions').innerHTML=`
     <div style="background:var(--bg);border:1.5px solid var(--border2);border-radius:11px;padding:16px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;margin-bottom:12px">Nueva Rutina</div>
+      <div class="form-group"><label class="form-label">Gimnasio</label><select id="rutina-gimnasio">${gymOptions}</select></div>
       <div class="form-group"><label class="form-label">Nombre</label><input id="rutina-nombre" placeholder="ej. Fuerza Total"/></div>
       <div class="form-group"><label class="form-label">Nivel</label>
         <select id="rutina-nivel"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select>
       </div>
-      <button class="btn btn-teal" onclick="guardarRutina()">Guardar rutina</button>
+      <div class="form-group"><label class="form-label">Días por semana</label><input id="rutina-dias" type="number" min="1" value="3"/></div>
+      <div class="form-group"><label class="form-label">Grupos musculares</label><input id="rutina-musculos" placeholder="ej. Pecho, Espalda, Piernas"/></div>
+      <button class="btn btn-teal" onclick="guardarRutina()">Enviar para aprobación</button>
     </div>`;
 }
-function guardarRutina(){
-  const n=document.getElementById('rutina-nombre').value;
-  if(!n){toast('Escribe el nombre');return;}
-  document.getElementById('gym-actions').innerHTML=`<div style="color:var(--green);font-weight:700;padding:10px 0">Rutina guardada correctamente.</div>`;
-  toast('Rutina creada');
-}
-function actualizarInfo(){
-  document.getElementById('gym-actions').innerHTML=`
-    <div style="background:var(--bg);border:1.5px solid var(--border2);border-radius:11px;padding:16px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;margin-bottom:12px">Actualizar Información</div>
-      <div class="form-group"><label class="form-label">Nombre</label><input id="gym-nombre" placeholder="Nombre del gimnasio"/></div>
-      <div class="form-group"><label class="form-label">Ciudad</label><input id="gym-ciudad" placeholder="Ciudad"/></div>
-      <button class="btn btn-outline" onclick="guardarInfo()">Guardar cambios</button>
-    </div>`;
-}
-function guardarInfo(){
-  document.getElementById('gym-actions').innerHTML=`<div style="color:var(--green);font-weight:700;padding:10px 0">Información actualizada.</div>`;
-  toast('Información guardada');
+async function guardarRutina(){
+  const gimnasio_id = parseInt(document.getElementById('rutina-gimnasio').value, 10);
+  const nombre = document.getElementById('rutina-nombre').value.trim();
+  const nivel = document.getElementById('rutina-nivel').value;
+  const dias = parseInt(document.getElementById('rutina-dias').value, 10);
+  const grupos_musculares = document.getElementById('rutina-musculos').value.trim();
+
+  if(!nombre || !nivel || !dias){
+    toast('Completa nombre, nivel y días.');
+    return;
+  }
+
+  try{
+    const res = await fetch(`${API_URL}/pendientes/rutinas`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        role: currentUser?.role || 'gimnasio',
+        gimnasio_id,
+        nombre,
+        nivel,
+        dias,
+        grupos_musculares
+      })
+    });
+    const data = await res.json();
+    if(res.ok){
+      document.getElementById('gym-actions').innerHTML=`<div style="color:var(--green);font-weight:700;padding:10px 0">Rutina enviada para aprobación.</div>`;
+      toast('Rutina enviada al admin.');
+    } else {
+      toast(data.error || 'No se pudo enviar la rutina.');
+    }
+  } catch(e){
+    console.error(e);
+    toast('Error de conexión al servidor.');
+  }
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────────

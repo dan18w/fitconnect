@@ -73,6 +73,41 @@ CREATE TABLE IF NOT EXISTS rutinas (
 
 
 -- ============================================================
+--  ⏳  PLANES PENDIENTES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pendientes_planes (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    gimnasio_id     INT          NOT NULL,
+    nombre          VARCHAR(120) NOT NULL,
+    precio          INT          NOT NULL,
+    duracion_meses  TINYINT      NOT NULL DEFAULT 1,
+    descripcion     TEXT,
+    destacado       TINYINT(1)   NOT NULL DEFAULT 0,
+    cover_url       VARCHAR(500),
+    estado          ENUM('Pendiente','Aprobado','Rechazado') NOT NULL DEFAULT 'Pendiente',
+    creado_en       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (gimnasio_id) REFERENCES gimnasios(id) ON DELETE CASCADE
+);
+
+
+-- ============================================================
+--  ⏳  RUTINAS PENDIENTES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pendientes_rutinas (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    gimnasio_id       INT          NOT NULL,
+    nombre            VARCHAR(120) NOT NULL,
+    nivel             ENUM('Principiante','Intermedio','Avanzado') NOT NULL,
+    dias              TINYINT      NOT NULL DEFAULT 3,
+    grupos_musculares VARCHAR(300),
+    cover_url         VARCHAR(500),
+    estado            ENUM('Pendiente','Aprobado','Rechazado') NOT NULL DEFAULT 'Pendiente',
+    creado_en         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (gimnasio_id) REFERENCES gimnasios(id) ON DELETE CASCADE
+);
+
+
+-- ============================================================
 --  🏃  EJERCICIOS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS ejercicios (

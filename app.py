@@ -200,6 +200,124 @@ def crear_gimnasio():
     return ok({"id": gid}), 201
 
 
+@app.route("/pendientes/planes", methods=["POST"])
+def crear_plan_pendiente():
+    d = request.json or {}
+    if d.get("role") != "gimnasio":
+        return err("Solo usuarios con rol 'gimnasio' pueden crear planes pendientes.", 403)
+
+    gimnasio_id = d.get("gimnasio_id")
+    nombre = (d.get("nombre") or "").strip()
+    precio = d.get("precio")
+    duracion_meses = d.get("duracion_meses")
+
+    if not gimnasio_id or not nombre or precio is None or duracion_meses is None:
+        return err("Gimnasio, nombre, precio y duración son requeridos.")
+    if not query("SELECT id FROM gimnasios WHERE id=%s", (gimnasio_id,), fetchone=True):
+        return err("Gimnasio no válido.")
+
+    pid = query(
+        "INSERT INTO pendientes_planes (gimnasio_id,nombre,precio,duracion_meses,descripcion,destacado,cover_url) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        (gimnasio_id, nombre, int(precio), int(duracion_meses), d.get("descripcion",""), int(bool(d.get("destacado",0))), d.get("cover_url","")),
+        commit=True
+    )
+    return ok({"id": pid, "estado": "Pendiente"}), 201
+
+
+@app.route("/pendientes/rutinas", methods=["POST"])
+def crear_rutina_pendiente():
+    d = request.json or {}
+    if d.get("role") != "gimnasio":
+        return err("Solo usuarios con rol 'gimnasio' pueden crear rutinas pendientes.", 403)
+
+    gimnasio_id = d.get("gimnasio_id")
+    nombre = (d.get("nombre") or "").strip()
+    nivel = d.get("nivel")
+    dias = d.get("dias")
+
+    if not gimnasio_id or not nombre or not nivel or dias is None:
+        return err("Gimnasio, nombre, nivel y días son requeridos.")
+    if nivel not in ("Principiante", "Intermedio", "Avanzado"):
+        return err("Nivel inválido.")
+    if not query("SELECT id FROM gimnasios WHERE id=%s", (gimnasio_id,), fetchone=True):
+        return err("Gimnasio no válido.")
+
+    rid = query(
+        "INSERT INTO pendientes_rutinas (gimnasio_id,nombre,nivel,dias,grupos_musculares,cover_url) VALUES (%s,%s,%s,%s,%s,%s)",
+        (gimnasio_id, nombre, nivel, int(dias), d.get("grupos_musculares",""), d.get("cover_url","")),
+        commit=True
+    )
+    return ok({"id": rid, "estado": "Pendiente"}), 201
+
+
+@app.route("/pendientes", methods=["GET"])
+def listar_pendientes():
+    estado = request.args.get("estado", "Pendiente")
+    planes = query(
+        "SELECT pp.*, g.nombre AS gimnasio FROM pendientes_planes pp JOIN gimnasios g ON pp.gimnasio_id=g.id WHERE pp.estado=%s ORDER BY pp.creado_en DESC",
+        (estado,)
+    )
+    rutinas = query(
+        "SELECT pr.*, g.nombre AS gimnasio FROM pendientes_rutinas pr JOIN gimnasios g ON pr.gimnasio_id=g.id WHERE pr.estado=%s ORDER BY pr.creado_en DESC",
+        (estado,)
+    )
+    return ok({"planes": planes, "rutinas": rutinas})
+
+
+@app.route("/pendientes/planes/<int:pid>/resolver", methods=["POST"])
+def resolver_plan_pendiente(pid):
+    d = request.json or {}
+    if d.get("role") != "admin":
+        return err("Solo el admin puede aprobar o rechazar solicitudes.", 403)
+
+    estado = d.get("estado")
+    if estado not in ("Aprobado", "Rechazado"):
+        return err("Acción inválida.")
+
+    pending = query("SELECT * FROM pendientes_planes WHERE id=%s", (pid,), fetchone=True)
+    if not pending:
+        return err("Solicitud de plan no encontrada.", 404)
+    if pending["estado"] != "Pendiente":
+        return err("Esta solicitud ya fue procesada.", 400)
+
+    if estado == "Aprobado":
+        query(
+            "INSERT INTO planes (gimnasio_id,nombre,precio,duracion_meses,descripcion,destacado,cover_url) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (pending["gimnasio_id"], pending["nombre"], pending["precio"], pending["duracion_meses"], pending["descripcion"], pending["destacado"], pending["cover_url"]),
+            commit=True
+        )
+
+    query("UPDATE pendientes_planes SET estado=%s WHERE id=%s", (estado, pid), commit=True)
+    return ok({"id": pid, "estado": estado})
+
+
+@app.route("/pendientes/rutinas/<int:rid>/resolver", methods=["POST"])
+def resolver_rutina_pendiente(rid):
+    d = request.json or {}
+    if d.get("role") != "admin":
+        return err("Solo el admin puede aprobar o rechazar solicitudes.", 403)
+
+    estado = d.get("estado")
+    if estado not in ("Aprobado", "Rechazado"):
+        return err("Acción inválida.")
+
+    pending = query("SELECT * FROM pendientes_rutinas WHERE id=%s", (rid,), fetchone=True)
+    if not pending:
+        return err("Solicitud de rutina no encontrada.", 404)
+    if pending["estado"] != "Pendiente":
+        return err("Esta solicitud ya fue procesada.", 400)
+
+    if estado == "Aprobado":
+        query(
+            "INSERT INTO rutinas (gimnasio_id,nombre,nivel,dias,grupos_musculares,cover_url) VALUES (%s,%s,%s,%s,%s,%s)",
+            (pending["gimnasio_id"], pending["nombre"], pending["nivel"], pending["dias"], pending["grupos_musculares"], pending["cover_url"]),
+            commit=True
+        )
+
+    query("UPDATE pendientes_rutinas SET estado=%s WHERE id=%s", (estado, rid), commit=True)
+    return ok({"id": rid, "estado": estado})
+
+
 # ============================================================
 #  SERVIDOR
 # ============================================================
