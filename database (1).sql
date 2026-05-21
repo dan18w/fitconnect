@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password   VARCHAR(255)  NOT NULL,          -- bcrypt hash
     rol        ENUM('cliente','gimnasio','admin') NOT NULL DEFAULT 'cliente',
     estado     ENUM('Activo','Inactivo')          NOT NULL DEFAULT 'Activo',
+    gimnasio_id INT NULL,
     creado_en  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

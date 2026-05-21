@@ -56,6 +56,7 @@ def register():
     email = d.get("email","").strip().lower()
     password = d.get("password","")
     rol = d.get("rol","cliente")
+    gimnasio_id = d.get("gimnasio_id")
 
     if not nombre or not email or not password:
         return err("Nombre, email y contraseña son requeridos.")
@@ -66,14 +67,20 @@ def register():
     if query("SELECT id FROM usuarios WHERE email=%s", (email,), fetchone=True):
         return err("El email ya está registrado.", 409)
 
+    if gimnasio_id is not None:
+        if rol != "gimnasio":
+            return err("Solo usuarios con rol 'gimnasio' pueden tener un gimnasio asociado.")
+        if not query("SELECT id FROM gimnasios WHERE id=%s", (gimnasio_id,), fetchone=True):
+            return err("Gimnasio no válido.")
+
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     uid = query(
-        "INSERT INTO usuarios (nombre,email,password,rol) VALUES (%s,%s,%s,%s)",
-        (nombre, email, hashed, rol), commit=True
+        "INSERT INTO usuarios (nombre,email,password,rol,gimnasio_id) VALUES (%s,%s,%s,%s,%s)",
+        (nombre, email, hashed, rol, gimnasio_id), commit=True
     )
 
-    return ok({"id": uid, "nombre": nombre, "email": email, "rol": rol}), 201
+    return ok({"id": uid, "nombre": nombre, "email": email, "rol": rol, "gimnasio_id": gimnasio_id}), 201
 
 
 @app.route("/login", methods=["POST"])
@@ -104,7 +111,7 @@ def login():
 @app.route("/usuarios", methods=["GET"])
 def listar_usuarios():
     return ok(query(
-        "SELECT id,nombre,email,rol,estado,creado_en FROM usuarios ORDER BY id"
+        "SELECT id,nombre,email,rol,estado,gimnasio_id,creado_en FROM usuarios ORDER BY id"
     ))
 
 
@@ -113,11 +120,21 @@ def actualizar_usuario(uid):
     d = request.json or {}
     estado = d.get("estado")
     rol = d.get("rol")
+    gimnasio_id = d.get("gimnasio_id")
 
     if estado and estado not in ("Activo","Inactivo"):
         return err("Estado inválido.")
     if rol and rol not in ("cliente","gimnasio","admin"):
         return err("Rol inválido.")
+    if gimnasio_id is not None:
+        if rol and rol != "gimnasio":
+            return err("Solo usuarios con rol 'gimnasio' pueden tener un gimnasio asociado.")
+        current = query("SELECT rol FROM usuarios WHERE id=%s", (uid,), fetchone=True)
+        if current and current["rol"] != "gimnasio" and rol != "gimnasio":
+            return err("Solo usuarios con rol 'gimnasio' pueden tener un gimnasio asociado.")
+        if not query("SELECT id FROM gimnasios WHERE id=%s", (gimnasio_id,), fetchone=True):
+            return err("Gimnasio no válido.")
+        query("UPDATE usuarios SET gimnasio_id=%s WHERE id=%s", (gimnasio_id, uid), commit=True)
 
     if estado:
         query("UPDATE usuarios SET estado=%s WHERE id=%s", (estado, uid), commit=True)
@@ -125,7 +142,7 @@ def actualizar_usuario(uid):
         query("UPDATE usuarios SET rol=%s WHERE id=%s", (rol, uid), commit=True)
 
     return ok(query(
-        "SELECT id,nombre,email,rol,estado FROM usuarios WHERE id=%s",
+        "SELECT id,nombre,email,rol,estado,gimnasio_id FROM usuarios WHERE id=%s",
         (uid,), fetchone=True
     ))
 
