@@ -200,6 +200,39 @@ def crear_gimnasio():
     return ok({"id": gid}), 201
 
 
+# Admin: actualizar gimnasio
+@app.route("/gimnasios/<int:gid>", methods=["PUT"])
+def actualizar_gimnasio(gid):
+    d = request.json or {}
+    allowed = ["nombre", "ciudad", "precio_base", "objetivo", "rating", "descripcion", "cover_url"]
+    updates = []
+    params = []
+    for f in allowed:
+        if f in d:
+            updates.append(f + "=%s")
+            params.append(d[f])
+
+    if not updates:
+        return err("No hay campos para actualizar.")
+
+    params.append(gid)
+    sql = f"UPDATE gimnasios SET {', '.join(updates)} WHERE id=%s"
+    query(sql, tuple(params), commit=True)
+    gym = query("SELECT * FROM gimnasios WHERE id=%s", (gid,), fetchone=True)
+    if not gym:
+        return err("Gimnasio no encontrado.", 404)
+    return ok(gym)
+
+
+# Admin: eliminar gimnasio
+@app.route("/gimnasios/<int:gid>", methods=["DELETE"])
+def eliminar_gimnasio(gid):
+    if not query("SELECT id FROM gimnasios WHERE id=%s", (gid,), fetchone=True):
+        return err("Gimnasio no encontrado.", 404)
+    query("DELETE FROM gimnasios WHERE id=%s", (gid,), commit=True)
+    return ok(msg="Gimnasio eliminado")
+
+
 # ============================================================
 #  SOLICITUDES DE MEMBRESÍA
 # ============================================================

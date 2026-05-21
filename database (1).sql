@@ -128,8 +128,18 @@ INSERT INTO usuarios (nombre, email, password, rol) VALUES
 ('Admin FitConnect', 'admin@fitconnect.com',  '$2b$12$HASH_ADMIN',   'admin'),
 ('Juan Pérez',       'juan@gmail.com',         '$2b$12$HASH_JUAN',    'cliente'),
 ('Laura Mendoza',    'laura@gmail.com',         '$2b$12$HASH_LAURA',   'cliente'),
-('FitZone Pro',      'fitzone@gym.com',         '$2b$12$HASH_FITZONE', 'gimnasio'),
-('CardioCity',       'cardio@gym.com',          '$2b$12$HASH_CARDIO',  'gimnasio');
+
+-- Gym owner accounts (one per gym)
+('FitZone Pro Owner', 'fitzone@gym.com',    '$2b$12$HASH_FITZONE', 'gimnasio'),
+('CardioCity Owner',  'cardio@gym.com',      '$2b$12$HASH_CARDIO',  'gimnasio'),
+('CrossPower Owner',  'crosspower@gym.com',  '$2b$12$HASH_CROSS',   'gimnasio'),
+('ZenFit Owner',      'zenfit@gym.com',      '$2b$12$HASH_ZEN',     'gimnasio'),
+('PowerHouse Owner',  'powerhouse@gym.com',  '$2b$12$HASH_POWER',   'gimnasio'),
+('EliteFit Owner',    'elitefit@gym.com',    '$2b$12$HASH_ELITE',   'gimnasio'),
+('PrimeFit Owner',    'primefit@gym.com',    '$2b$12$HASH_PRIME',   'gimnasio'),
+('AquaFit Owner',     'aquafit@gym.com',     '$2b$12$HASH_AQUA',    'gimnasio'),
+('SpeedTrack Owner',  'speedtrack@gym.com',  '$2b$12$HASH_SPEED',   'gimnasio'),
+('CoreZone Owner',    'corezone@gym.com',    '$2b$12$HASH_CORE',    'gimnasio');
 
 -- Gimnasios
 INSERT INTO gimnasios (nombre, ciudad, precio_base, objetivo, rating, descripcion) VALUES
